@@ -1,0 +1,218 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#080f20">
+<title>BLOCK BLEST</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#080f20;color:#eef5ff;
+ font-family:Arial,sans-serif;min-height:100vh;
+ display:flex;justify-content:center;
+}
+#app{width:100%;max-width:480px;padding:24px 18px}
+header{text-align:center;margin:30px 0}
+.logo{font-size:34px;font-weight:900;letter-spacing:3px}
+.logo span{color:#278cff}
+.sub{color:#8495b2;font-size:12px;letter-spacing:3px;margin-top:8px}
+.screen{display:none}
+.screen.active{display:block}
+.panel{
+ background:#111d34;border:1px solid #203858;
+ border-radius:18px;padding:20px;margin-bottom:15px;
+}
+h2{margin:0 0 12px;font-size:20px}
+p{color:#91a5c3;font-size:14px;line-height:1.5}
+button{
+ border:0;border-radius:12px;padding:15px;
+ background:#1678ed;color:white;font-weight:bold;
+ font-size:15px;width:100%;cursor:pointer;
+}
+button.secondary{background:#1c2d48;color:#dceaff}
+.menu-buttons{display:grid;gap:12px;margin-top:24px}
+#score{text-align:center;font-size:25px;font-weight:bold;margin:12px}
+#board{
+ display:grid;grid-template-columns:repeat(8,1fr);
+ gap:5px;background:#14233b;padding:8px;
+ border-radius:13px;touch-action:manipulation;
+}
+.cell{
+ aspect-ratio:1;background:#253651;
+ border-radius:5px;transition:background .1s;
+}
+.cell.filled{background:#258aff;box-shadow:inset 0 0 0 1px #63b1ff}
+#pieces{display:flex;justify-content:space-around;gap:8px;margin:22px 0}
+.piece{
+ flex:1;min-height:90px;background:#111d34;
+ border:1px solid #203858;border-radius:12px;
+ display:flex;align-items:center;justify-content:center;
+ padding:8px;touch-action:manipulation;
+}
+.shape{display:grid;gap:3px}
+.shape-cell{width:19px;height:19px;background:#278cff;border-radius:4px}
+.shape-cell.empty{background:transparent}
+.small{font-size:12px;color:#8095b5;text-align:center}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+ <div class="logo">BLOCK <span>BLEST</span></div>
+ <div class="sub">A VIREX STUDIO GAME</div>
+</header>
+
+<section id="menu" class="screen active">
+ <div class="panel">
+  <h2>Welcome to BLOCK BLEST</h2>
+  <p>A simple collection of fun mini-games. Challenge yourself and beat your best score!</p>
+ </div>
+ <div class="menu-buttons">
+  <button onclick="startGame()">PLAY BLOCK PUZZLE</button>
+  <button class="secondary" onclick="showStats()">STATISTICS</button>
+  <button class="secondary" onclick="showAbout()">ABOUT</button>
+ </div>
+</section>
+
+<section id="game" class="screen">
+ <div class="row">
+  <button class="secondary" onclick="goMenu()">← MENU</button>
+ </div>
+ <div id="score">SCORE: 0</div>
+ <div id="board"></div>
+ <div class="small">Choose a block, then tap a position on the board.</div>
+ <div id="pieces"></div>
+ <button class="secondary" onclick="startGame()">RESTART</button>
+</section>
+
+<section id="stats" class="screen">
+ <div class="panel">
+  <h2>Statistics</h2>
+  <p id="statsText"></p>
+ </div>
+ <button onclick="goMenu()">BACK</button>
+</section>
+
+<section id="about" class="screen">
+ <div class="panel">
+  <h2>About BLOCK BLEST</h2>
+  <p>Version 1.0.0</p>
+  <p>Founder & Developer: Dũng</p>
+  <p>Technical Assistant: GPT</p>
+  <p>Requested by: Tấn</p>
+  <p>Published by: VIREX Studio</p>
+ </div>
+ <button onclick="goMenu()">BACK</button>
+</section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const shapes=[
+ [[1]],[[1,1]],[[1,1,1]],[[1],[1],[1]],
+ [[1,1],[1,1]],[[1,0],[1,1]],[[0,1],[1,1]],
+ [[1,1,1],[0,1,0]],[[1,1,1,1]],
+ [[1,0],[1,0],[1,1]],[[0,1],[0,1],[1,1]]
+];
+let board,score=0,best=Number(localStorage.bestScore||0);
+let pieces=[],selected=-1,games=Number(localStorage.games||0);
+let lines=Number(localStorage.lines||0);
+
+function screen(id){
+ document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+ $(id).classList.add('active');
+}
+function goMenu(){screen('menu')}
+function startGame(){
+ board=Array.from({length:8},()=>Array(8).fill(0));
+ score=0;selected=-1;games++;
+ localStorage.games=games;
+ newPieces();draw();screen('game');
+}
+function newPieces(){
+ pieces=Array.from({length:3},()=>shapes[Math.floor(Math.random()*shapes.length)]);
+ selected=-1;drawPieces();
+}
+function draw(){
+ $('score').textContent='SCORE: '+score;
+ const el=$('board');el.innerHTML='';
+ board.forEach((row,y)=>row.forEach((v,x)=>{
+  const c=document.createElement('div');
+  c.className='cell'+(v?' filled':'');
+  c.onclick=()=>place(x,y);
+  el.appendChild(c);
+ }));
+ drawPieces();
+}
+function drawPieces(){
+ const el=$('pieces');el.innerHTML='';
+ pieces.forEach((shape,i)=>{
+  const box=document.createElement('div');
+  box.className='piece';
+  if(selected===i)box.style.borderColor='#278cff';
+  if(shape){
+   const grid=document.createElement('div');
+   grid.className='shape';
+   grid.style.gridTemplateColumns=`repeat(${shape[0].length},19px)`;
+   shape.forEach(row=>row.forEach(v=>{
+    const c=document.createElement('div');
+    c.className='shape-cell'+(!v?' empty':'');
+    grid.appendChild(c);
+   }));
+   box.appendChild(grid);
+  }
+  box.onclick=()=>{selected=i;drawPieces()};
+  el.appendChild(box);
+ });
+}
+function place(x,y){
+ if(selected<0||!pieces[selected])return;
+ const s=pieces[selected];
+ for(let a=0;a<s.length;a++)for(let b=0;b<s[a].length;b++){
+  if(s[a][b]&&(y+a>=8||x+b>=8||board[y+a][x+b]))return;
+ }
+ let added=0;
+ s.forEach((row,a)=>row.forEach((v,b)=>{
+  if(v){board[y+a][x+b]=1;added++}
+ }));
+ score+=added;
+ pieces[selected]=null;selected=-1;
+ clearLines();
+ if(pieces.every(p=>p===null))newPieces();
+ draw();
+ if(!canMove())gameOver();
+}
+function clearLines(){
+ let fullRows=[],fullCols=[];
+ for(let y=0;y<8;y++)if(board[y].every(v=>v))fullRows.push(y);
+ for(let x=0;x<8;x++)if(board.every(row=>row[x]))fullCols.push(x);
+ fullRows.forEach(y=>board[y].fill(0));
+ fullCols.forEach(x=>board.forEach(row=>row[x]=0));
+ let count=fullRows.length+fullCols.length;
+ score+=count*10;
+ lines+=count;localStorage.lines=lines;
+}
+function canMove(){
+ return pieces.some(s=>s&&board.some((row,y)=>row.some((v,x)=>{
+  if(v)return false;
+  for(let a=0;a<s.length;a++)for(let b=0;b<s[a].length;b++)
+   if(s[a][b]&&(y+a>=8||x+b>=8||board[y+a][x+b]))return false;
+  return true;
+ })));
+}
+function gameOver(){
+ best=Math.max(best,score);localStorage.bestScore=best;
+ setTimeout(()=>alert('GAME OVER! Score: '+score),100);
+}
+function showStats(){
+ $('statsText').innerHTML=
+ 'Best score: '+best+'<br>Games played: '+games+
+ '<br>Lines cleared: '+lines;
+ screen('stats');
+}
+function showAbout(){screen('about')}
+</script>
+</body>
+</html>
